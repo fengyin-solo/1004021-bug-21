@@ -1,6 +1,8 @@
-import type { ModuleMeta } from './types'
+import type { MetricRule, ModuleMeta } from './types'
 
-// 模块元数据由仓库生成时写入：字段、状态、动作、流转目标都在这里，页面不再各自写一遍。
+// 模块元数据由仓库生成时写入：字段、状态、动作、流转目标、指标口径都在这里，页面不再各自写一遍。
+// pending（待处理）统一口径：status 不是该模块最后一个（终态）状态即待处理。
+// abnormal（异常量）统一口径：status 命中 abnormalStatuses 才算异常，修复/恢复后自动摘帽。
 export const MODULES: ModuleMeta[] = [
   {
     key: "pipeline",
@@ -11,7 +13,12 @@ export const MODULES: ModuleMeta[] = [
     statuses: ["待建档", "已建档", "待复核", "已停用"],
     actions: ["提交建档", "发起复核", "停用管线"],
     actionTargets: {"提交建档": "已建档", "发起复核": "待复核", "停用管线": "已停用"},
-    metrics: ["管线总长", "待复核管线", "已停用管线"],
+    metricRules: [
+      { label: "管线总长", kind: "total" },
+      { label: "待复核管线", kind: "status", status: "待复核" },
+      { label: "已停用管线", kind: "status", status: "已停用" },
+    ],
+    abnormalStatuses: ["已停用"],
   },
   {
     key: "inspection",
@@ -22,7 +29,12 @@ export const MODULES: ModuleMeta[] = [
     statuses: ["待分配", "已分配", "执行中", "已完成"],
     actions: ["分配任务", "开始巡检", "确认完成"],
     actionTargets: {"分配任务": "已分配", "开始巡检": "执行中", "确认完成": "已完成"},
-    metrics: ["今日任务", "待分配任务", "已完成任务"],
+    metricRules: [
+      { label: "今日任务", kind: "total" },
+      { label: "待分配任务", kind: "status", status: "待分配" },
+      { label: "已完成任务", kind: "status", status: "已完成" },
+    ],
+    abnormalStatuses: [],
   },
   {
     key: "defect",
@@ -33,7 +45,12 @@ export const MODULES: ModuleMeta[] = [
     statuses: ["待确认", "已确认", "已修复", "已忽略"],
     actions: ["确认缺陷", "标记修复", "忽略缺陷"],
     actionTargets: {"确认缺陷": "已确认", "标记修复": "已修复", "忽略缺陷": "已忽略"},
-    metrics: ["待确认缺陷", "已修复缺陷", "严重缺陷"],
+    metricRules: [
+      { label: "待确认缺陷", kind: "status", status: "待确认" },
+      { label: "已修复缺陷", kind: "status", status: "已修复" },
+      { label: "严重缺陷", kind: "abnormal" },
+    ],
+    abnormalStatuses: ["待确认", "已确认"],
   },
   {
     key: "out_repair",
@@ -44,7 +61,12 @@ export const MODULES: ModuleMeta[] = [
     statuses: ["待派遣", "已派遣", "维修中", "已返回"],
     actions: ["下达派遣", "出发维修", "返回确认"],
     actionTargets: {"下达派遣": "已派遣", "出发维修": "维修中", "返回确认": "已返回"},
-    metrics: ["待派遣维修", "维修中数量", "当日派遣"],
+    metricRules: [
+      { label: "待派遣维修", kind: "status", status: "待派遣" },
+      { label: "维修中数量", kind: "status", status: "维修中" },
+      { label: "当日派遣", kind: "total" },
+    ],
+    abnormalStatuses: [],
   },
   {
     key: "repair_accept",
@@ -55,7 +77,12 @@ export const MODULES: ModuleMeta[] = [
     statuses: ["待验收", "验收中", "已通过", "需返修"],
     actions: ["发起验收", "确认通过", "退回返修"],
     actionTargets: {"发起验收": "验收中", "确认通过": "已通过", "退回返修": "需返修"},
-    metrics: ["待验收记录", "已通过记录", "需返修记录"],
+    metricRules: [
+      { label: "待验收记录", kind: "status", status: "待验收" },
+      { label: "已通过记录", kind: "status", status: "已通过" },
+      { label: "需返修记录", kind: "status", status: "需返修" },
+    ],
+    abnormalStatuses: ["需返修"],
   },
   {
     key: "pipe_detect",
@@ -66,7 +93,12 @@ export const MODULES: ModuleMeta[] = [
     statuses: ["待检测", "检测中", "已完成", "需复测"],
     actions: ["安排检测", "记录结果", "标记复测"],
     actionTargets: {"安排检测": "检测中", "记录结果": "已完成", "标记复测": "需复测"},
-    metrics: ["待检测管段", "已完成管段", "需复测管段"],
+    metricRules: [
+      { label: "待检测管段", kind: "status", status: "待检测" },
+      { label: "已完成管段", kind: "status", status: "已完成" },
+      { label: "需复测管段", kind: "status", status: "需复测" },
+    ],
+    abnormalStatuses: ["需复测"],
   },
   {
     key: "manhole",
@@ -77,7 +109,12 @@ export const MODULES: ModuleMeta[] = [
     statuses: ["正常", "待维护", "维护中", "已更换"],
     actions: ["申请维护", "开始维护", "确认更换"],
     actionTargets: {"申请维护": "待维护", "开始维护": "维护中", "确认更换": "已更换"},
-    metrics: ["井盖总数", "待维护井盖", "已更换井盖"],
+    metricRules: [
+      { label: "井盖总数", kind: "total" },
+      { label: "待维护井盖", kind: "status", status: "待维护" },
+      { label: "已更换井盖", kind: "status", status: "已更换" },
+    ],
+    abnormalStatuses: ["待维护"],
   },
   {
     key: "pump_station",
@@ -88,7 +125,12 @@ export const MODULES: ModuleMeta[] = [
     statuses: ["待启机", "运行中", "已停机", "故障中"],
     actions: ["启动泵站", "正常停机", "上报故障"],
     actionTargets: {"启动泵站": "运行中", "正常停机": "已停机", "上报故障": "故障中"},
-    metrics: ["运行中泵站", "故障泵站", "今日累计运行"],
+    metricRules: [
+      { label: "运行中泵站", kind: "status", status: "运行中" },
+      { label: "故障泵站", kind: "status", status: "故障中" },
+      { label: "今日累计运行", kind: "sum", field: "运行时长" },
+    ],
+    abnormalStatuses: ["故障中"],
   },
   {
     key: "drain_network",
@@ -99,7 +141,12 @@ export const MODULES: ModuleMeta[] = [
     statuses: ["正常", "淤积预警", "溢流风险", "已封堵"],
     actions: ["标记淤积", "预警溢流", "确认封堵"],
     actionTargets: {"标记淤积": "淤积预警", "预警溢流": "溢流风险", "确认封堵": "已封堵"},
-    metrics: ["管段总数", "淤积预警管段", "溢流风险管段"],
+    metricRules: [
+      { label: "管段总数", kind: "total" },
+      { label: "淤积预警管段", kind: "status", status: "淤积预警" },
+      { label: "溢流风险管段", kind: "status", status: "溢流风险" },
+    ],
+    abnormalStatuses: ["淤积预警", "溢流风险"],
   },
   {
     key: "water_quality",
@@ -110,7 +157,12 @@ export const MODULES: ModuleMeta[] = [
     statuses: ["待取样", "已取样", "已出结果", "已超标"],
     actions: ["安排取样", "录入结果", "标记超标"],
     actionTargets: {"安排取样": "已取样", "录入结果": "已出结果", "标记超标": "已超标"},
-    metrics: ["取样计划数", "已出结果数", "超标样本数"],
+    metricRules: [
+      { label: "取样计划数", kind: "status", status: "待取样" },
+      { label: "已出结果数", kind: "status", status: "已出结果" },
+      { label: "超标样本数", kind: "status", status: "已超标" },
+    ],
+    abnormalStatuses: ["已超标"],
   },
   {
     key: "flow_monitor",
@@ -121,7 +173,12 @@ export const MODULES: ModuleMeta[] = [
     statuses: ["在线", "离线", "数据异常", "已校准"],
     actions: ["标记异常", "恢复在线", "申请校准"],
     actionTargets: {"标记异常": "数据异常", "恢复在线": "在线", "申请校准": "已校准"},
-    metrics: ["在线测点", "离线测点", "异常测点"],
+    metricRules: [
+      { label: "在线测点", kind: "status", status: "在线" },
+      { label: "离线测点", kind: "status", status: "离线" },
+      { label: "异常测点", kind: "status", status: "数据异常" },
+    ],
+    abnormalStatuses: ["数据异常"],
   },
   {
     key: "emergency",
@@ -132,7 +189,13 @@ export const MODULES: ModuleMeta[] = [
     statuses: ["待响应", "响应中", "处置中", "已处置"],
     actions: ["启动响应", "制定方案", "确认处置"],
     actionTargets: {"启动响应": "响应中", "制定方案": "处置中", "确认处置": "已处置"},
-    metrics: ["待响应事件", "处置中事件", "已处置事件"],
+    metricRules: [
+      { label: "待响应事件", kind: "status", status: "待响应" },
+      { label: "处置中事件", kind: "status", status: "处置中" },
+      { label: "已处置事件", kind: "status", status: "已处置" },
+    ],
+    // 处置中的事件是在办流程而非异常；待响应超时预警未在状态中体现，暂不计入异常量。
+    abnormalStatuses: [],
   },
   {
     key: "leak_detect",
@@ -143,7 +206,12 @@ export const MODULES: ModuleMeta[] = [
     statuses: ["待检测", "检测中", "已出报告", "已修复"],
     actions: ["安排检测", "生成报告", "标记已修复"],
     actionTargets: {"安排检测": "检测中", "生成报告": "已出报告", "标记已修复": "已修复"},
-    metrics: ["待检测管段", "漏点总数", "已修复漏点"],
+    metricRules: [
+      { label: "待检测管段", kind: "status", status: "待检测" },
+      { label: "漏点总数", kind: "sum", field: "漏点数量" },
+      { label: "已修复漏点", kind: "status", status: "已修复" },
+    ],
+    abnormalStatuses: ["已出报告"],
   },
   {
     key: "trenchless",
@@ -154,7 +222,12 @@ export const MODULES: ModuleMeta[] = [
     statuses: ["待施工", "施工中", "已完成", "待复检"],
     actions: ["安排施工", "确认完成", "发起复检"],
     actionTargets: {"安排施工": "施工中", "确认完成": "已完成", "发起复检": "待复检"},
-    metrics: ["待施工修复", "施工中修复", "已完成修复"],
+    metricRules: [
+      { label: "待施工修复", kind: "status", status: "待施工" },
+      { label: "施工中修复", kind: "status", status: "施工中" },
+      { label: "已完成修复", kind: "status", status: "已完成" },
+    ],
+    abnormalStatuses: ["待复检"],
   },
   {
     key: "pipe_cleaning",
@@ -164,8 +237,14 @@ export const MODULES: ModuleMeta[] = [
     fields: ["清洗编号", "清洗管段", "清洗方式", "清洗设备", "计划日期", "实际日期", "清洗长度", "清洗状态"],
     statuses: ["待清洗", "清洗中", "已完成", "需复查"],
     actions: ["安排清洗", "开始清洗", "确认完成"],
+    // 注意：seed 中「开始清洗」目标为已完成、「确认完成」目标为需复查，沿用该流转口径。
     actionTargets: {"安排清洗": "清洗中", "开始清洗": "已完成", "确认完成": "需复查"},
-    metrics: ["待清洗管段", "清洗中管段", "已完成管段"],
+    metricRules: [
+      { label: "待清洗管段", kind: "status", status: "待清洗" },
+      { label: "清洗中管段", kind: "status", status: "清洗中" },
+      { label: "已完成管段", kind: "status", status: "已完成" },
+    ],
+    abnormalStatuses: ["需复查"],
   },
   {
     key: "facility_archive",
@@ -176,7 +255,12 @@ export const MODULES: ModuleMeta[] = [
     statuses: ["待归档", "已归档", "待更新", "已作废"],
     actions: ["提交归档", "更新档案", "作废档案"],
     actionTargets: {"提交归档": "已归档", "更新档案": "待更新", "作废档案": "已作废"},
-    metrics: ["档案总数", "待归档档案", "待更新档案"],
+    metricRules: [
+      { label: "档案总数", kind: "total" },
+      { label: "待归档档案", kind: "status", status: "待归档" },
+      { label: "待更新档案", kind: "status", status: "待更新" },
+    ],
+    abnormalStatuses: ["待更新"],
   },
   {
     key: "monitor_device",
@@ -187,7 +271,12 @@ export const MODULES: ModuleMeta[] = [
     statuses: ["待安装", "运行中", "待校准", "已故障"],
     actions: ["确认安装", "申请校准", "上报故障"],
     actionTargets: {"确认安装": "运行中", "申请校准": "待校准", "上报故障": "已故障"},
-    metrics: ["运行中设备", "待校准设备", "故障设备"],
+    metricRules: [
+      { label: "运行中设备", kind: "status", status: "运行中" },
+      { label: "待校准设备", kind: "status", status: "待校准" },
+      { label: "故障设备", kind: "status", status: "已故障" },
+    ],
+    abnormalStatuses: ["已故障"],
   },
   {
     key: "contractor",
@@ -198,7 +287,13 @@ export const MODULES: ModuleMeta[] = [
     statuses: ["待审核", "已备案", "作业中", "已清退"],
     actions: ["审核备案", "安排作业", "清退队伍"],
     actionTargets: {"审核备案": "已备案", "安排作业": "作业中", "清退队伍": "已清退"},
-    metrics: ["备案队伍", "作业中队伍", "待审核队伍"],
+    metricRules: [
+      { label: "备案队伍", kind: "status", status: "已备案" },
+      { label: "作业中队伍", kind: "status", status: "作业中" },
+      { label: "待审核队伍", kind: "status", status: "待审核" },
+    ],
+    // 已清退是正常管理终态，不算异常。
+    abnormalStatuses: [],
   },
 ]
 

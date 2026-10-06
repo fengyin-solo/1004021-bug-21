@@ -17,8 +17,20 @@ export type ModuleMeta = {
   statuses: string[]
   actions: string[]
   actionTargets: Record<string, string>
-  metrics: string[]
+  /** 模块指标卡规则：列表页与概览共用同一套口径。 */
+  metricRules: MetricRule[]
+  /** 计入「异常量」的状态：由业务语义显式声明，不靠动作名猜。 */
+  abnormalStatuses: string[]
 }
+
+/** 模块指标卡的计算规则，三种口径互斥：总数 / 某状态数量 / 异常数量 / 数值字段求和。 */
+export type MetricRule =
+  | { label: string; kind: 'total' }
+  | { label: string; kind: 'status'; status: string }
+  | { label: string; kind: 'abnormal' }
+  | { label: string; kind: 'sum'; field: string }
+
+export type MetricValue = { label: string; value: number }
 
 export type PageResult = {
   items: EntryRow[]
@@ -32,7 +44,26 @@ export type ActionResult = {
   message: string
 }
 
+export type OverviewModule = {
+  key: string
+  name: string
+  created: number
+  pending: number
+  abnormal: number
+}
+
+export type OverviewAbnormal = {
+  /** 来源模块 key，用于跳转定位 */
+  moduleKey: string
+  moduleName: string
+  id: number
+  status: string
+  /** 列表里用于辨认记录的业务编号（任务编号、缺陷编号等） */
+  code: string
+}
+
 export type OverviewResult = {
   cards: { label: string; value: number }[]
-  modules: { name: string; created: number; pending: number; abnormal: number }[]
+  modules: OverviewModule[]
+  abnormalRecords: OverviewAbnormal[]
 }

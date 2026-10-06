@@ -1,13 +1,13 @@
 <template>
-  <section class="page" data-module="facility_archive">
+  <section class="page" :data-module="meta.key">
     <header class="page-head">
       <div>
-        <h2>设施档案管理</h2>
-        <p class="page-desc">维护设施档案，围绕档案编号、设施名称、设施类别、所属区域做登记、筛选与状态流转。</p>
+        <h2>{{ meta.name }}管理</h2>
+        <p class="page-desc">{{ meta.desc }}</p>
       </div>
       <div class="page-actions">
-        <button class="btn primary" type="button" @click="openCreate">登记设施档案</button>
-        <button class="btn" type="button" @click="exportRows">导出设施档案清单</button>
+        <button class="btn primary" type="button" @click="openCreate">登记{{ meta.entity }}</button>
+        <button class="btn" type="button" @click="exportRows">导出{{ meta.name }}清单</button>
       </div>
     </header>
 
@@ -27,7 +27,7 @@
     <form class="filter-bar" @submit.prevent="reload">
       <label v-for="field in filterFields" :key="field" class="filter-item">
         <span>{{ field }}</span>
-        <input v-model="filters[field]" :placeholder="`按${field}检索`" />
+        <input v-model="filters[field]" :placeholder="'按' + field + '检索'" />
       </label>
       <button class="btn" type="submit">查询</button>
       <button class="btn ghost" type="button" @click="resetFilters">重置条件</button>
@@ -36,18 +36,18 @@
     <table class="data-table">
       <thead>
         <tr>
-          <th v-for="column in columns" :key="column">{{ column }}</th>
+          <th v-for="column in meta.fields" :key="column">{{ column }}</th>
           <th>当前状态</th>
           <th>可执行动作</th>
         </tr>
       </thead>
       <tbody>
         <tr v-for="row in rows" :key="String(row.id)">
-          <td v-for="column in columns" :key="column">{{ row[column] ?? '—' }}</td>
+          <td v-for="column in meta.fields" :key="column">{{ row[column] ?? '—' }}</td>
           <td>{{ row.status }}</td>
           <td class="row-actions">
             <button
-              v-for="action in actions"
+              v-for="action in meta.actions"
               :key="action"
               class="link"
               type="button"
@@ -58,80 +58,37 @@
           </td>
         </tr>
         <tr v-if="!rows.length">
-          <td :colspan="columns.length + 2" class="empty-state">暂无设施档案数据，可先登记设施档案</td>
+          <td :colspan="meta.fields.length + 2" class="empty-state">
+            暂无{{ meta.name }}数据，可先登记{{ meta.entity }}
+          </td>
         </tr>
       </tbody>
     </table>
 
     <footer class="page-foot">
-      <span>共 {{ total }} 条设施档案记录</span>
+      <span>共 {{ total }} 条{{ meta.entity }}</span>
       <span v-if="errorMessage" class="error-text">{{ errorMessage }}</span>
     </footer>
   </section>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { useModulePage } from '@/composables/useModulePage'
 
-import {
-  downloadEntries,
-  listEntries,
-  moduleMeta,
-  runAction as applyAction,
-} from '@/api/local-service'
-import type { EntryRow } from '@/data/types'
+const {
+  meta,
+  rows,
+  total,
+  errorMessage,
+  filters,
+  filterFields,
+  stats,
+  statusSummary,
+  reload,
+  resetFilters,
+  exportRows,
+  openCreate,
+  runAction,
+} = useModulePage('facility_archive')
 
-const meta = moduleMeta('facility_archive')
-const columns = ["档案编号", "设施名称", "设施类别", "所属区域", "竣工日期", "设计图纸", "承建企业", "档案状态"]
-const actions = ["提交归档", "更新档案", "作废档案"]
-const statuses = ["待归档", "已归档", "待更新", "已作废"]
-const stats = [{"label": "档案总数", "value": 0}, {"label": "待归档档案", "value": 0}, {"label": "待更新档案", "value": 0}]
-
-const rows = ref<EntryRow[]>([])
-const total = ref(0)
-const errorMessage = ref('')
-const filters = ref<Record<string, string>>({})
-const filterFields = columns.slice(0, 3)
-const statusSummary = computed(() =>
-  statuses.map((status: string) => ({
-    status,
-    count: rows.value.filter((row) => String(row.status) === status).length,
-  })),
-)
-
-function resetFilters() {
-  filters.value = {}
-  reload()
-}
-
-function exportRows() {
-  downloadEntries(meta.key)
-}
-
-function openCreate() {
-  errorMessage.value = '设施档案登记入口尚未接入审批流'
-}
-
-function runAction(action: string, row: EntryRow) {
-  errorMessage.value = ''
-  const result = applyAction(meta.key, Number(row.id), action)
-  if (!result.ok) {
-    errorMessage.value = result.message
-    return
-  }
-  reload()
-}
-
-function reload() {
-  errorMessage.value = ''
-  try {
-    const payload = listEntries(meta.key, filters.value)
-    rows.value = payload.items
-    total.value = payload.total
-  } catch (error) {
-    errorMessage.value = error instanceof Error ? error.message : '设施档案列表读取失败'
-  }
-}
-
-onMounted(reload)
 </script>

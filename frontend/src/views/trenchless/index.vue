@@ -71,21 +71,23 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 
 import {
   downloadEntries,
   listEntries,
   moduleMeta,
+  moduleSummary,
   runAction as applyAction,
 } from '@/api/local-service'
+import { subscribe } from '@/data/local-store'
 import type { EntryRow } from '@/data/types'
 
 const meta = moduleMeta('trenchless')
 const columns = ["修复编号", "修复管段", "修复工艺", "修复材料", "施工日期", "修复长度", "修复效果", "修复状态"]
 const actions = ["安排施工", "确认完成", "发起复检"]
 const statuses = ["待施工", "施工中", "已完成", "待复检"]
-const stats = [{"label": "待施工修复", "value": 0}, {"label": "施工中修复", "value": 0}, {"label": "已完成修复", "value": 0}]
+const stats = ref([{ label: '登记总量', value: 0 }, { label: '待处理', value: 0 }, { label: '异常量', value: 0 }])
 
 const rows = ref<EntryRow[]>([])
 const total = ref(0)
@@ -105,7 +107,11 @@ function resetFilters() {
 }
 
 function exportRows() {
-  downloadEntries(meta.key)
+  try {
+    downloadEntries(meta.key)
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : '清单导出失败'
+  }
 }
 
 function openCreate() {
@@ -128,10 +134,32 @@ function reload() {
     const payload = listEntries(meta.key, filters.value)
     rows.value = payload.items
     total.value = payload.total
+    const summary = moduleSummary(meta.key)
+    stats.value = [
+      { label: '登记总量', value: summary.created },
+      { label: '待处理', value: summary.pending },
+      { label: '异常量', value: summary.abnormal },
+    ]
   } catch (error) {
-    errorMessage.value = error instanceof Error ? error.message : '非开挖修复列表读取失败'
+    // 读取失败：列表、总数、统计卡全部清零，绝不用上次的旧值冒充新数据。
+    rows.value = []
+    total.value = 0
+    stats.value = [
+      { label: '登记总量', value: 0 },
+      { label: '待处理', value: 0 },
+      { label: '异常量', value: 0 },
+    ]
+    errorMessage.value = error instanceof Error ? error.message : '列表读取失败'
   }
 }
 
-onMounted(reload)
+let unsubscribe: (() => void) | undefined
+
+onMounted(() => {
+  reload()
+  // 其他标签页的状态落库后同步重算，保证并发操作下始终以最后成功落库的状态为准。
+  unsubscribe = subscribe(reload)
+})
+
+onUnmounted(() => unsubscribe?.())
 </script>
